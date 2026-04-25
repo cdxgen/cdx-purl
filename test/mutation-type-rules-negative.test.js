@@ -28,7 +28,7 @@ function qualifierDefaultValue(key) {
     return "123e4567-e89b-12d3-a456-426614174000";
   }
   if (key === "checksum") {
-    return "sha256:abc123";
+    return "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   }
   return "value";
 }

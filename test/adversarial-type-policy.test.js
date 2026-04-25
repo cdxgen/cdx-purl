@@ -33,7 +33,7 @@ function qualifierValueForKey(key) {
     return "123e4567-e89b-12d3-a456-426614174000";
   }
   if (key === "checksum") {
-    return "sha256:abc123";
+    return "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   }
   return "value";
 }
@@ -213,11 +213,70 @@ test("adversarial: checksum multi-value remains accepted across all registered t
       ...buildable,
       qualifiers: {
         ...(buildable.qualifiers || {}),
-        checksum: "sha1:aaa,sha256:bbb"
+        checksum:
+          "sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     });
 
     const parsed = parse(built);
-    assert.equal(parsed.qualifiers?.checksum, "sha1:aaa,sha256:bbb", `expected checksum qualifier for ${type}`);
+    assert.equal(
+      parsed.qualifiers?.checksum,
+      "sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      `expected checksum qualifier for ${type}`
+    );
+  }
+});
+
+test("adversarial: checksum without algorithm is rejected for all registered types", () => {
+  for (const { type } of TYPE_DEFINITIONS) {
+    const buildable = makeBuildableParts(type);
+
+    assert.throws(
+      () =>
+        build({
+          ...buildable,
+          qualifiers: {
+            ...(buildable.qualifiers || {}),
+            checksum: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }),
+      (error) => error && error.code === "E_CHECKSUM_MISSING_ALGORITHM",
+      `expected checksum missing-algorithm rejection for ${type}`
+    );
+
+    const canonical = build({ ...buildable });
+    const mutated = insertQualifier(canonical, "checksum=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    assert.throws(
+      () => parse(mutated),
+      (error) => error && error.code === "E_CHECKSUM_MISSING_ALGORITHM",
+      `expected parse-time checksum missing-algorithm rejection for ${type}`
+    );
+  }
+});
+
+test("adversarial: checksum digest length mismatches are rejected for all registered types", () => {
+  for (const { type } of TYPE_DEFINITIONS) {
+    const buildable = makeBuildableParts(type);
+
+    assert.throws(
+      () =>
+        build({
+          ...buildable,
+          qualifiers: {
+            ...(buildable.qualifiers || {}),
+            checksum: "sha256:abc123"
+          }
+        }),
+      (error) => error && error.code === "E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM",
+      `expected checksum digest validation rejection for ${type}`
+    );
+
+    const canonical = build({ ...buildable });
+    const mutated = insertQualifier(canonical, "checksum=sha256:abc123");
+    assert.throws(
+      () => parse(mutated),
+      (error) => error && error.code === "E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM",
+      `expected parse-time checksum digest validation rejection for ${type}`
+    );
   }
 });

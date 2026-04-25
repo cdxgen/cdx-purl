@@ -1,6 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { TYPE_RULES_SOURCE } from "./generated/type-rules.js";
 
 const HEX_RE = /^[0-9A-Fa-f]{2}$/;
 const TYPE_RE = /^[A-Za-z][A-Za-z0-9.-]*$/;
@@ -10,17 +8,34 @@ const CANONICAL_QUALIFIER_KEY_RE = /^[a-z][a-z0-9._-]*$/;
 
 const LITERAL_SET = new Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:");
 
-// Phase 2 strict qualifier policy: keys must be known by type or global spec qualifiers.
+// Strict qualifier policy: keys must be known by type or global spec qualifiers.
 const GLOBAL_QUALIFIER_KEYS = new Set(["repository_url", "download_url", "vcs_url", "checksum"]);
 const MULTI_VALUE_QUALIFIER_KEYS = new Set(["checksum"]);
-const EXTRA_QUALIFIER_KEYS_BY_TYPE = {
-  conan: new Set(["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"]),
-  deb: new Set(["distro"]),
-  rpm: new Set(["distro"])
-};
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM = Object.freeze({
+  md5: 32,
+  sha1: 40,
+  sha224: 56,
+  sha256: 64,
+  sha384: 96,
+  sha512: 128,
+  "sha512-224": 56,
+  "sha512-256": 64,
+  "sha3-224": 56,
+  "sha3-256": 64,
+  "sha3-384": 96,
+  "sha3-512": 128,
+  "blake2s-256": 64,
+  "blake2b-256": 64,
+  "blake2b-384": 96,
+  "blake2b-512": 128
+});
+const HEX_DIGEST_RE = /^[0-9A-Fa-f]+$/;
+// Compatibility exceptions kept outside type definitions; merged into QUALIFIER_POLICY_BY_TYPE.
+const COMPAT_QUALIFIER_OVERRIDES_BY_TYPE = Object.freeze({
+  conan: ["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"],
+  deb: ["distro"],
+  rpm: ["distro"]
+});
 
 function createError(code, message, input) {
   const error = new Error(message);
@@ -225,44 +240,44 @@ function compileComponentRule(definition) {
       requirement: "optional",
       caseSensitive: true,
       permittedPattern: null,
-      normalizationRules: []
+      normalizationOps: []
     };
   }
 
+  const caseSensitive =
+    typeof definition.caseSensitive === "boolean" ? definition.caseSensitive : definition.case_sensitive !== false;
+  const permittedCharacters = definition.permittedCharacters ?? definition.permitted_characters ?? null;
+  const normalizationOps = Array.isArray(definition.normalizationOps) ? definition.normalizationOps : [];
+
   return {
     requirement: definition.requirement ?? "optional",
-    caseSensitive: definition.case_sensitive !== false,
-    permittedPattern: definition.permitted_characters ? new RegExp(definition.permitted_characters) : null,
-    normalizationRules: Array.isArray(definition.normalization_rules) ? definition.normalization_rules : []
+    caseSensitive,
+    permittedPattern: permittedCharacters ? new RegExp(permittedCharacters) : null,
+    normalizationOps
   };
 }
 
-function loadTypeRules() {
+function loadTypeRulesFromSource(source) {
   const rules = new Map();
-  const typesDir = path.join(__dirname, "specification", "types");
-  const files = readdirSync(typesDir).filter((name) => name.endsWith("-definition.json"));
 
-  for (const fileName of files) {
-    const filePath = path.join(typesDir, fileName);
-    const definition = JSON.parse(readFileSync(filePath, "utf8"));
+  for (const [type, definition] of Object.entries(source)) {
     const qualifiers = new Map();
-
-    for (const qualifier of definition.qualifiers_definition ?? []) {
+    for (const qualifier of definition.qualifiers ?? []) {
       const key = String(qualifier.key || "").toLowerCase();
       if (!key) {
         continue;
       }
       qualifiers.set(key, {
         requirement: qualifier.requirement ?? "optional",
-        defaultValue: qualifier.default_value
+        defaultValue: qualifier.defaultValue ?? null
       });
     }
 
-    rules.set(definition.type, {
-      namespace: compileComponentRule(definition.namespace_definition),
-      name: compileComponentRule(definition.name_definition),
-      version: compileComponentRule(definition.version_definition),
-      subpath: compileComponentRule(definition.subpath_definition),
+    rules.set(type, {
+      namespace: compileComponentRule(definition.namespace),
+      name: compileComponentRule(definition.name),
+      version: compileComponentRule(definition.version),
+      subpath: compileComponentRule(definition.subpath),
       qualifiers
     });
   }
@@ -270,15 +285,71 @@ function loadTypeRules() {
   return rules;
 }
 
-const TYPE_RULES = loadTypeRules();
+const TYPE_RULES = loadTypeRulesFromSource(TYPE_RULES_SOURCE);
 
-function applyNormalizationRules(value, rules) {
+function buildQualifierPolicyByType(typeRules) {
+  const map = {};
+
+  for (const [type, rules] of typeRules.entries()) {
+    const keys = new Set(rules.qualifiers.keys());
+    for (const globalKey of GLOBAL_QUALIFIER_KEYS) {
+      keys.add(globalKey);
+    }
+    map[type] = keys;
+  }
+
+  for (const [type, keys] of Object.entries(COMPAT_QUALIFIER_OVERRIDES_BY_TYPE)) {
+    if (!map[type]) {
+      map[type] = new Set();
+      for (const globalKey of GLOBAL_QUALIFIER_KEYS) {
+        map[type].add(globalKey);
+      }
+    }
+    for (const key of keys) {
+      map[type].add(String(key).toLowerCase());
+    }
+  }
+
+  return Object.freeze(map);
+}
+
+const QUALIFIER_POLICY_BY_TYPE = buildQualifierPolicyByType(TYPE_RULES);
+
+/**
+ * Apply generated normalization opcodes to a string value in declared order.
+ *
+ * Opcode order is precomputed in `generated/type-rules.js` by the generator,
+ * including precedence handling for conflicting rules such as PyPI dot/underscore
+ * normalization. Runtime applies ops exactly as listed and fails closed on
+ * unknown opcodes.
+ *
+ * Supported ops:
+ * - `to_lowercase`
+ * - `apply_kebab_case`
+ * - `replace_underscore_with_dash`
+ * - `replace_dot_with_underscore`
+ * - `replace_non_alnum_with_underscore`
+ *
+ * @param {string} value
+ * @param {string[]} normalizationOps
+ * @returns {string}
+ * @throws {Error} PurlError with code `E_UNKNOWN_NORMALIZATION_OP` for unknown ops.
+ */
+function applyNormalizationRules(value, normalizationOps) {
   let normalized = value;
-  for (const rule of rules) {
-    if (rule.includes("Replace underscore _ with dash -")) {
+  for (const op of normalizationOps) {
+    if (op === "to_lowercase") {
+      normalized = normalized.toLowerCase();
+    } else if (op === "apply_kebab_case") {
+      normalized = normalized.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    } else if (op === "replace_underscore_with_dash") {
       normalized = normalized.replace(/_/g, "-");
-    } else if (rule.includes("Replace non-[a-z] letters, non-[0-9] digits with underscore _")) {
+    } else if (op === "replace_dot_with_underscore") {
+      normalized = normalized.replace(/\./g, "_");
+    } else if (op === "replace_non_alnum_with_underscore") {
       normalized = normalized.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    } else {
+      throw createError("E_UNKNOWN_NORMALIZATION_OP", `Unknown normalization operation: ${op}`);
     }
   }
   return normalized;
@@ -293,8 +364,8 @@ function normalizeByRule(value, rule) {
   if (!rule.caseSensitive) {
     normalized = normalized.toLowerCase();
   }
-  if (rule.normalizationRules.length) {
-    normalized = applyNormalizationRules(normalized, rule.normalizationRules);
+  if (rule.normalizationOps.length) {
+    normalized = applyNormalizationRules(normalized, rule.normalizationOps);
   }
 
   return normalized;
@@ -346,11 +417,36 @@ function isQualifierAllowed(type, key, qualifierRules) {
   if (qualifierRules.has(key)) {
     return true;
   }
-  if (GLOBAL_QUALIFIER_KEYS.has(key)) {
-    return true;
+  const allowed = QUALIFIER_POLICY_BY_TYPE[type];
+  return allowed ? allowed.has(key) : false;
+}
+
+function validateChecksumQualifierValue(value, input) {
+  const entries = String(value).split(",");
+
+  for (const entry of entries) {
+    const token = entry.trim();
+    const colon = token.indexOf(":");
+    if (colon <= 0) {
+      throw createError(
+        "E_CHECKSUM_MISSING_ALGORITHM",
+        "Checksum entries must use algorithm:digest format",
+        input
+      );
+    }
+
+    const algorithm = token.slice(0, colon).toLowerCase();
+    const digest = token.slice(colon + 1);
+    const expectedLength = CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM[algorithm];
+
+    if (!expectedLength || digest.length !== expectedLength || !HEX_DIGEST_RE.test(digest)) {
+      throw createError(
+        "E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM",
+        `Invalid checksum digest for algorithm ${algorithm}`,
+        input
+      );
+    }
   }
-  const extraKeys = EXTRA_QUALIFIER_KEYS_BY_TYPE[type];
-  return extraKeys ? extraKeys.has(key) : false;
 }
 
 function applyTypeRules(parts, input) {
@@ -394,6 +490,9 @@ function applyTypeRules(parts, input) {
       }
       if (out.qualifiers[key].includes(",") && !MULTI_VALUE_QUALIFIER_KEYS.has(key)) {
         throw createError("E_MULTIVALUE_QUALIFIER", `Multiple values are not allowed for qualifier ${key}`, input);
+      }
+      if (key === "checksum") {
+        validateChecksumQualifierValue(out.qualifiers[key], input);
       }
     }
   }
@@ -944,6 +1043,17 @@ export function getTypedPurlBuilder(type) {
  */
 export function getTypedPurlClass(type) {
   return TypedPurls[type] ?? null;
+}
+
+/**
+ * Resolve the strict qualifier allow-list for a registered purl type.
+ *
+ * @param {string} type - Canonical lower-case purl type.
+ * @returns {Set<string> | null}
+ */
+export function getAllowedQualifierKeysForType(type) {
+  const allowed = QUALIFIER_POLICY_BY_TYPE[type];
+  return allowed ? new Set(allowed) : null;
 }
 
 /**

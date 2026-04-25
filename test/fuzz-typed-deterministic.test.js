@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { TypedPurlBuilders, build, roundTrip } from "../index.js";
+import { TypedPurlBuilders, build, parse, roundTrip } from "../index.js";
 
 function readEnvInt(name, fallback, min, max) {
   const raw = process.env[name];
@@ -45,6 +45,21 @@ const SAFE_TOKENS = ["alpha", "beta", "gamma", "delta", "tool", "lib", "pkg", "o
 
 function token(rng) {
   return rng.pick(SAFE_TOKENS);
+}
+
+function randomHex(rng, length) {
+  const chars = "0123456789abcdef";
+  let out = "";
+  for (let i = 0; i < length; i += 1) {
+    out += chars[rng.int(chars.length)];
+  }
+  return out;
+}
+
+function randomChecksumValue(rng) {
+  return rng.bool(0.5)
+    ? `sha256:${randomHex(rng, 64)}`
+    : `sha1:${randomHex(rng, 40)},sha256:${randomHex(rng, 64)}`;
 }
 
 function minimalParts(type) {
@@ -217,6 +232,24 @@ function mutateCanonicalParseable(canonical, rng) {
   return mutated;
 }
 
+function mutateChecksumQualifier(canonical, rawChecksum) {
+  const hashIndex = canonical.indexOf("#");
+  const main = hashIndex >= 0 ? canonical.slice(0, hashIndex) : canonical;
+  const hash = hashIndex >= 0 ? canonical.slice(hashIndex) : "";
+
+  if (!main.includes("?")) {
+    return `${main}?checksum=${rawChecksum}${hash}`;
+  }
+
+  const [prefix, query] = main.split("?");
+  const filtered = query
+    .split("&")
+    .filter(Boolean)
+    .filter((entry) => !entry.toLowerCase().startsWith("checksum="));
+  filtered.push(`checksum=${rawChecksum}`);
+  return `${prefix}?${filtered.join("&")}${hash}`;
+}
+
 function randomizeBuildableParts(base, rng) {
   const parts = {
     ...base,
@@ -239,7 +272,7 @@ function randomizeBuildableParts(base, rng) {
   if (rng.bool(0.5)) {
     parts.qualifiers = {
       ...(parts.qualifiers || {}),
-      checksum: `sha256:${token(rng)}${token(rng)}`
+      checksum: randomChecksumValue(rng)
     };
   }
 
@@ -267,6 +300,35 @@ test(`deterministic typed fuzz convergence (seed=${SEED}, cases=${CASES}, hops=$
       current = roundTrip(current);
       assert.equal(current, canonical, `type=${type} seed=${SEED} case=${i} hop=${hop} drifted from canonical`);
     }
+  }
+});
+
+test(`deterministic typed fuzz rejects invalid checksum payloads (seed=${SEED + 99}, cases=${CASES})`, () => {
+  const rng = createRng(SEED + 99);
+  const baselines = new Map();
+
+  for (const type of TYPES) {
+    baselines.set(type, fillRequiredParts(type));
+  }
+
+  for (let i = 0; i < CASES; i += 1) {
+    const type = rng.pick(TYPES);
+    const baseline = baselines.get(type);
+    const canonical = build(randomizeBuildableParts(baseline, rng));
+
+    const missingAlgorithm = mutateChecksumQualifier(canonical, randomHex(rng, 40));
+    assert.throws(
+      () => parse(missingAlgorithm),
+      (error) => error?.code === "E_CHECKSUM_MISSING_ALGORITHM",
+      `type=${type} seed=${SEED + 99} case=${i} expected missing algorithm rejection`
+    );
+
+    const invalidDigest = mutateChecksumQualifier(canonical, `sha256:${randomHex(rng, 12)}`);
+    assert.throws(
+      () => parse(invalidDigest),
+      (error) => error?.code === "E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM",
+      `type=${type} seed=${SEED + 99} case=${i} expected invalid digest rejection`
+    );
   }
 });
 

@@ -47,9 +47,9 @@ test("builder encodes unicode object parts and parse restores values", () => {
 });
 
 test("canonical output normalizes lowercase percent triplets", () => {
-  const input = "pkg:generic/acme/app@1.0.0?checksum=%e2%82%ac#%c3%9f";
+  const input = "pkg:generic/acme/app@1.0.0?download_url=%e2%82%ac#%c3%9f";
   const out = roundTrip(input);
-  assert.equal(out, "pkg:generic/acme/app@1.0.0?checksum=%E2%82%AC#%C3%9F");
+  assert.equal(out, "pkg:generic/acme/app@1.0.0?download_url=%E2%82%AC#%C3%9F");
 });
 
 test("strict ABNF rejects raw unicode in input purl", () => {
@@ -115,9 +115,15 @@ test("phase 2 rejects multi-value qualifiers unless explicitly allowed", () => {
     namespace: null,
     name: "openssl",
     version: "1.1.10g",
-    qualifiers: { checksum: "sha1:aaa,sha256:bbb" },
+    qualifiers: {
+      checksum:
+        "sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
     subpath: null
   });
 
-  assert.equal(checksumPurl, "pkg:generic/openssl@1.1.10g?checksum=sha1:aaa%2Csha256:bbb");
+  assert.equal(
+    checksumPurl,
+    "pkg:generic/openssl@1.1.10g?checksum=sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa%2Csha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  );
 });

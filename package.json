@@ -6,6 +6,12 @@
   "exports": {
     ".": "./index.js"
   },
+  "files": [
+    "index.js",
+    "generated/type-rules.js",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "node --test",
     "test:base": "node --test test/fixtures-base.test.js",
