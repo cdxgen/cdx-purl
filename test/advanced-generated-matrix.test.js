@@ -187,11 +187,47 @@ for (const definition of DEFINITIONS) {
       ...baseline,
       qualifiers: {
         ...(baseline.qualifiers || {}),
-        checksum: "sha1:aaaa,sha256:bbbb"
+        checksum:
+          "sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     });
 
-    assert.equal(parse(built).qualifiers?.checksum, "sha1:aaaa,sha256:bbbb");
+    assert.equal(
+      parse(built).qualifiers?.checksum,
+      "sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    );
+  });
+
+  test(`${type}: checksum missing algorithm is rejected`, () => {
+    const baseline = getBaseline(definition);
+
+    assert.throws(
+      () =>
+        build({
+          ...baseline,
+          qualifiers: {
+            ...(baseline.qualifiers || {}),
+            checksum: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          }
+        }),
+      (error) => error?.code === "E_CHECKSUM_MISSING_ALGORITHM"
+    );
+  });
+
+  test(`${type}: checksum digest must match algorithm length and charset`, () => {
+    const baseline = getBaseline(definition);
+
+    assert.throws(
+      () =>
+        build({
+          ...baseline,
+          qualifiers: {
+            ...(baseline.qualifiers || {}),
+            checksum: "sha256:xyz123"
+          }
+        }),
+      (error) => error?.code === "E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM"
+    );
   });
 
   test(`${type}: parse rejects malformed qualifier key`, () => {

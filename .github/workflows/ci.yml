@@ -46,6 +46,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check generated type-rules freshness
+        run: node scripts/check-generated-type-rules.mjs
+
       - name: Run focused suites
         run: |
           pnpm test:base

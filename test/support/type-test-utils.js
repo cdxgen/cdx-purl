@@ -25,7 +25,7 @@ export function qualifierDefaultValue(key) {
     return "123e4567-e89b-12d3-a456-426614174000";
   }
   if (key === "checksum") {
-    return "sha256:abc123";
+    return "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   }
   if (key === "repository_url" || key === "download_url" || key === "vcs_url") {
     return "https://example.com/repo";

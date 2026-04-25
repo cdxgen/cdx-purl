@@ -10,13 +10,47 @@ const FIXTURES_ROOT = path.join(ROOT, "specification", "tests");
 
 const GLOBAL_QUALIFIER_KEYS = new Set(["repository_url", "download_url", "vcs_url", "checksum"]);
 const MULTI_VALUE_QUALIFIER_KEYS = new Set(["checksum"]);
-const EXTRA_QUALIFIER_KEYS_BY_TYPE = {
-  conan: new Set(["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"]),
-  deb: new Set(["distro"]),
-  rpm: new Set(["distro"])
-};
+const CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM = Object.freeze({
+  md5: 32,
+  sha1: 40,
+  sha224: 56,
+  sha256: 64,
+  sha384: 96,
+  sha512: 128,
+  "sha512-224": 56,
+  "sha512-256": 64,
+  "sha3-224": 56,
+  "sha3-256": 64,
+  "sha3-384": 96,
+  "sha3-512": 128,
+  "blake2s-256": 64,
+  "blake2b-256": 64,
+  "blake2b-384": 96,
+  "blake2b-512": 128
+});
+const HEX_DIGEST_RE = /^[0-9A-Fa-f]+$/;
+const EXTRA_COMPAT_QUALIFIER_KEYS_BY_TYPE = Object.freeze({
+  conan: ["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"],
+  deb: ["distro"],
+  rpm: ["distro"]
+});
 
 let ALLOWED_QUALIFIERS_BY_TYPE = null;
+let EXTRA_QUALIFIER_KEYS_BY_TYPE = null;
+
+function buildExtraQualifierMap(allowedQualifierMap) {
+  const map = new Map();
+
+  for (const type of allowedQualifierMap.keys()) {
+    map.set(type, new Set());
+  }
+
+  for (const [type, keys] of Object.entries(EXTRA_COMPAT_QUALIFIER_KEYS_BY_TYPE)) {
+    map.set(type, new Set(keys));
+  }
+
+  return map;
+}
 
 function normalizeParts(parts) {
   return {
@@ -158,7 +192,7 @@ function hasUnknownQualifierViolation(entry) {
   }
 
   const allowed = ALLOWED_QUALIFIERS_BY_TYPE.get(type) || new Set();
-  const extras = EXTRA_QUALIFIER_KEYS_BY_TYPE[type] || new Set();
+  const extras = EXTRA_QUALIFIER_KEYS_BY_TYPE?.get(type) || new Set();
 
   for (const key of Object.keys(qualifiers)) {
     const normalized = key.toLowerCase();
@@ -189,6 +223,31 @@ function hasDisallowedMultivalueQualifier(entry) {
   return false;
 }
 
+function hasInvalidChecksumQualifier(entry) {
+  const qualifiers = qualifiersFromEntry(entry);
+  if (!qualifiers || typeof qualifiers.checksum !== "string") {
+    return false;
+  }
+
+  const entries = qualifiers.checksum.split(",");
+  for (const entryValue of entries) {
+    const token = entryValue.trim();
+    const colon = token.indexOf(":");
+    if (colon <= 0) {
+      return true;
+    }
+
+    const algorithm = token.slice(0, colon).toLowerCase();
+    const digest = token.slice(colon + 1);
+    const expectedLength = CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM[algorithm];
+    if (!expectedLength || digest.length !== expectedLength || !HEX_DIGEST_RE.test(digest)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function strictExpectedFailure(entry) {
   if (entry.expected_failure) {
     return true;
@@ -208,6 +267,10 @@ function strictExpectedFailure(entry) {
   }
 
   if (hasDisallowedMultivalueQualifier(entry)) {
+    return true;
+  }
+
+  if (hasInvalidChecksumQualifier(entry)) {
     return true;
   }
 
@@ -273,6 +336,7 @@ async function loadAllowedQualifierMap() {
 }
 
 ALLOWED_QUALIFIERS_BY_TYPE = await loadAllowedQualifierMap();
+EXTRA_QUALIFIER_KEYS_BY_TYPE = buildExtraQualifierMap(ALLOWED_QUALIFIERS_BY_TYPE);
 const baseTests = await loadBaseTests();
 
 for (const { filePath, entry } of baseTests) {

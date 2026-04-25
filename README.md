@@ -8,6 +8,8 @@ Strict, definition-driven package-url parser/builder for Node.js.
 - Type rules loaded from `specification/types/*-definition.json`
 - Deterministic canonicalization and roundtrip behavior
 
+[![AI-DECLARATION: auto](https://img.shields.io/badge/䷼%20AI--DECLARATION-auto-ede9fe?labelColor=ede9fe)](./AI-DECLARATION.md)
+
 ## Install
 
 ```bash
@@ -188,3 +190,7 @@ Coverage includes:
 - CI test matrix (Node): `20.x`, `22.x`, `24.x`, `25.x`
 - CI runtime smoke coverage: Bun and Deno
 - Build and publish path: Node `24.x` with npm trusted publishing + provenance
+
+## License
+
+MIT License. See [LICENSE](./LICENSE) for details.

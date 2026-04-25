@@ -84,6 +84,21 @@ function randomQualifierValue(rng) {
   return `${left}${joiner}${right}`;
 }
 
+function randomHex(rng, length) {
+  const chars = "0123456789abcdef";
+  let out = "";
+  for (let i = 0; i < length; i += 1) {
+    out += chars[rng.int(chars.length)];
+  }
+  return out;
+}
+
+function randomChecksumValue(rng) {
+  return rng.bool(0.5)
+    ? `sha256:${randomHex(rng, 64)}`
+    : `sha1:${randomHex(rng, 40)},sha256:${randomHex(rng, 64)}`;
+}
+
 function randomSubpath(rng) {
   const count = 1 + rng.int(3);
   const segments = [];
@@ -101,7 +116,7 @@ function makeGenericCase(rng) {
   const qualifiers = rng.bool(0.65)
     ? {
         repository_url: randomQualifierValue(rng),
-        checksum: randomQualifierValue(rng)
+        checksum: randomChecksumValue(rng)
       }
     : null;
 
@@ -314,6 +329,24 @@ function mutateCanonicalParseable(canonical, rng) {
   return mutated;
 }
 
+function mutateChecksumQualifier(canonical, rawChecksum) {
+  const hashIndex = canonical.indexOf("#");
+  const main = hashIndex >= 0 ? canonical.slice(0, hashIndex) : canonical;
+  const hash = hashIndex >= 0 ? canonical.slice(hashIndex) : "";
+
+  if (!main.includes("?")) {
+    return `${main}?checksum=${rawChecksum}${hash}`;
+  }
+
+  const [prefix, query] = main.split("?");
+  const filtered = query
+    .split("&")
+    .filter(Boolean)
+    .filter((entry) => !entry.toLowerCase().startsWith("checksum="));
+  filtered.push(`checksum=${rawChecksum}`);
+  return `${prefix}?${filtered.join("&")}${hash}`;
+}
+
 test(`deterministic fuzz roundtrip stability (seed=${SEED}, cases=${CASES}, hops=${HOPS})`, () => {
   const rng = createRng(SEED);
 
@@ -389,4 +422,26 @@ test(
     }
   }
 );
+
+test(`deterministic checksum mutation fuzz rejects invalid checksum payloads (seed=${SEED + 71}, cases=${MUTATION_CASES})`, () => {
+  const rng = createRng(SEED + 71);
+
+  for (let caseIndex = 0; caseIndex < MUTATION_CASES; caseIndex += 1) {
+    const canonical = build(makeCase(rng));
+
+    const missingAlgorithm = mutateChecksumQualifier(canonical, randomHex(rng, 40));
+    assert.throws(
+      () => parse(missingAlgorithm),
+      (error) => error?.code === "E_CHECKSUM_MISSING_ALGORITHM",
+      `seed=${SEED + 71} case=${caseIndex} expected missing algorithm rejection`
+    );
+
+    const invalidDigest = mutateChecksumQualifier(canonical, `sha256:${randomHex(rng, 12)}`);
+    assert.throws(
+      () => parse(invalidDigest),
+      (error) => error?.code === "E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM",
+      `seed=${SEED + 71} case=${caseIndex} expected invalid digest rejection`
+    );
+  }
+});
 
