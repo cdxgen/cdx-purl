@@ -1,0 +1,35 @@
+{
+  "name": "@cdxgen/cdx-purl",
+  "version": "0.0.1",
+  "description": "Pure JavaScript package-url parser and builder",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "test:base": "node --test test/fixtures-base.test.js",
+    "test:mutation": "node --test test/mutation-type-rules-negative.test.js",
+    "test:typed": "node --test test/typed-builders.test.js",
+    "test:typed:all": "node --test test/typed-all-types.test.js",
+    "test:fuzz": "node --test test/fuzz-roundtrip-deterministic.test.js test/fuzz-typed-deterministic.test.js",
+    "test:fuzz:ci": "PURL_FUZZ_SEED=${PURL_FUZZ_SEED:-1337} PURL_FUZZ_CASES=${PURL_FUZZ_CASES:-300} PURL_FUZZ_HOPS=${PURL_FUZZ_HOPS:-10} PURL_FUZZ_MUTATION_CASES=${PURL_FUZZ_MUTATION_CASES:-200} PURL_TYPED_FUZZ_SEED=${PURL_TYPED_FUZZ_SEED:-4242} PURL_TYPED_FUZZ_CASES=${PURL_TYPED_FUZZ_CASES:-240} PURL_TYPED_FUZZ_HOPS=${PURL_TYPED_FUZZ_HOPS:-8} pnpm test:fuzz",
+    "check:provenance": "npm publish --provenance --dry-run",
+    "test:runtime:node": "node test/runtime-smoke.mjs",
+    "test:runtime:bun": "bun run test/runtime-smoke.mjs",
+    "test:runtime:deno": "deno run --allow-read test/runtime-smoke.mjs"
+  },
+  "keywords": [],
+  "author": "Team AppThreat <hello@appthreat.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.0.0",
+    "deno": ">=1.40.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "type": "module"
+}
