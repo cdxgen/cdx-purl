@@ -315,13 +315,41 @@ function buildQualifierPolicyByType(typeRules) {
 
 const QUALIFIER_POLICY_BY_TYPE = buildQualifierPolicyByType(TYPE_RULES);
 
+/**
+ * Apply generated normalization opcodes to a string value in declared order.
+ *
+ * Opcode order is precomputed in `generated/type-rules.js` by the generator,
+ * including precedence handling for conflicting rules such as PyPI dot/underscore
+ * normalization. Runtime applies ops exactly as listed and fails closed on
+ * unknown opcodes.
+ *
+ * Supported ops:
+ * - `to_lowercase`
+ * - `apply_kebab_case`
+ * - `replace_underscore_with_dash`
+ * - `replace_dot_with_underscore`
+ * - `replace_non_alnum_with_underscore`
+ *
+ * @param {string} value
+ * @param {string[]} normalizationOps
+ * @returns {string}
+ * @throws {Error} PurlError with code `E_UNKNOWN_NORMALIZATION_OP` for unknown ops.
+ */
 function applyNormalizationRules(value, normalizationOps) {
   let normalized = value;
   for (const op of normalizationOps) {
-    if (op === "replace_underscore_with_dash") {
+    if (op === "to_lowercase") {
+      normalized = normalized.toLowerCase();
+    } else if (op === "apply_kebab_case") {
+      normalized = normalized.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    } else if (op === "replace_underscore_with_dash") {
       normalized = normalized.replace(/_/g, "-");
+    } else if (op === "replace_dot_with_underscore") {
+      normalized = normalized.replace(/\./g, "_");
     } else if (op === "replace_non_alnum_with_underscore") {
       normalized = normalized.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    } else {
+      throw createError("E_UNKNOWN_NORMALIZATION_OP", `Unknown normalization operation: ${op}`);
     }
   }
   return normalized;

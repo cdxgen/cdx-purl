@@ -10,7 +10,9 @@ export const TYPE_RULES_SOURCE = {
       "normalizationRules": [
         "It is not case sensitive and must be lowercased."
       ],
-      "normalizationOps": []
+      "normalizationOps": [
+        "to_lowercase"
+      ]
     },
     "name": {
       "requirement": "required",
@@ -725,7 +727,9 @@ export const TYPE_RULES_SOURCE = {
       "normalizationRules": [
         "Apply kebab-case"
       ],
-      "normalizationOps": []
+      "normalizationOps": [
+        "apply_kebab_case"
+      ]
     },
     "version": {
       "requirement": "optional",
@@ -1202,6 +1206,7 @@ export const TYPE_RULES_SOURCE = {
         "Replace dot . with underscore _ when used in distribution (sdist, wheel) names"
       ],
       "normalizationOps": [
+        "replace_dot_with_underscore",
         "replace_underscore_with_dash"
       ]
     },

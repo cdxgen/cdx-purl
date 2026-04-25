@@ -11,7 +11,13 @@ const __dirname = path.dirname(__filename);
 const ROOT = path.join(__dirname, "..");
 const GENERATED_FILE = path.join(ROOT, "generated", "type-rules.js");
 
-const expected = renderTypeRulesModule(loadTypeRuleSource());
+let expected = "";
+try {
+  expected = renderTypeRulesModule(loadTypeRuleSource());
+} catch (error) {
+  console.error(`Failed to compute generated type rules: ${error?.message || error}`);
+  process.exit(1);
+}
 let current = "";
 
 try {

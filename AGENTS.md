@@ -20,7 +20,7 @@ Guidance for AI/code agents working in `cdx-purl`.
   - `roundTrip`
   - `Purl`, `PurlBuilder`
   - generated type registries: `TypedPurlBuilders`, `TypedPurls`
-- Definition-driven type rules are loaded from `specification/types`.
+- Definition-driven type rules are generated from `specification/types` into `generated/type-rules.js` and imported by runtime.
 - Strict ABNF mismatch ledger: `specification/tests/STRICT_ABNF_MISMATCHES.md`.
 
 ## Phase policy
@@ -35,9 +35,10 @@ Guidance for AI/code agents working in `cdx-purl`.
 
 1. Update implementation in `index.js` (or split modules if needed).
 2. If `specification/types/*-definition.json` changes, regenerate `generated/type-rules.js`.
-3. Add/update tests under `test/`.
-4. Run tests before finalizing.
-5. If spec/tests mismatch is discovered, add/update `specification/tests/STRICT_ABNF_MISMATCHES.md` and note it clearly.
+3. Run `node scripts/check-generated-type-rules.mjs`.
+4. Add/update tests under `test/`.
+5. Run tests before finalizing.
+6. If spec/tests mismatch is discovered, add/update `specification/tests/STRICT_ABNF_MISMATCHES.md` and note it clearly.
 
 Regenerate command:
 

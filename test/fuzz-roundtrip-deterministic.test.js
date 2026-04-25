@@ -445,3 +445,17 @@ test(`deterministic checksum mutation fuzz rejects invalid checksum payloads (se
   }
 });
 
+test("pypi normalization is idempotent for mixed dot and underscore names", () => {
+  const canonical = build({
+    type: "pypi",
+    namespace: null,
+    name: "A_B-C.D~x",
+    version: null,
+    qualifiers: null,
+    subpath: null
+  });
+
+  assert.equal(canonical, "pkg:pypi/a-b-c-d~x");
+  assert.equal(roundTrip(canonical), canonical);
+  assert.equal(roundTrip("pkg://pypi/a-b-c_d~x"), canonical);
+});

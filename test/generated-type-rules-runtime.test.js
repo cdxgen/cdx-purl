@@ -6,6 +6,7 @@ import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { TYPE_RULES_SOURCE } from "../generated/type-rules.js";
+import { deriveNormalizationOps } from "../scripts/generate-type-rules.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,7 +47,10 @@ test("generated type rules include all specification types and qualifier keys", 
     assert.deepEqual(generatedQualifierKeys, specQualifierKeys, `qualifier key drift for ${type}`);
   }
 
-  assert.deepEqual(TYPE_RULES_SOURCE.pypi?.name?.normalizationOps || [], ["replace_underscore_with_dash"]);
+  assert.deepEqual(TYPE_RULES_SOURCE.pypi?.name?.normalizationOps || [], [
+    "replace_dot_with_underscore",
+    "replace_underscore_with_dash"
+  ]);
   assert.deepEqual(TYPE_RULES_SOURCE.pub?.name?.normalizationOps || [], ["replace_non_alnum_with_underscore"]);
 });
 
@@ -83,4 +87,18 @@ test("runtime works with only index.js and generated/type-rules.js", async () =>
   }
 });
 
+test("generator normalization mapping: explicit no-op text is allowed and unknown text fails closed", () => {
+  assert.deepEqual(deriveNormalizationOps(["Apply kebab-case"], "hackage.name"), ["apply_kebab_case"]);
+  assert.deepEqual(
+    deriveNormalizationOps(
+      ["normalize version as specified in vercmp(8) at https://man.archlinux.org/man/vercmp.8#DESCRIPTION as part of alpm."],
+      "alpm.version"
+    ),
+    []
+  );
+  assert.throws(
+    () => deriveNormalizationOps(["brand new normalization semantics"], "example.name"),
+    /Unknown normalization rule text for example.name/
+  );
+});
 

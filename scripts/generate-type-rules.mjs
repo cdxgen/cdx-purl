@@ -11,24 +11,61 @@ const TYPES_DIR = path.join(ROOT, "specification", "types");
 const OUT_DIR = path.join(ROOT, "generated");
 const OUT_FILE = path.join(OUT_DIR, "type-rules.js");
 
-const NORMALIZATION_TEXT_TO_OP = Object.freeze([
-  ["Replace underscore _ with dash -", "replace_underscore_with_dash"],
-  ["Replace non-[a-z] letters, non-[0-9] digits with underscore _", "replace_non_alnum_with_underscore"]
-]);
+const NORMALIZATION_TEXT_TO_OP = Object.freeze(
+  new Map([
+    ["It is not case sensitive and must be lowercased.", "to_lowercase"],
+    ["Apply kebab-case", "apply_kebab_case"],
+    ["Replace underscore _ with dash -", "replace_underscore_with_dash"],
+    ["Replace dot . with underscore _ when used in distribution (sdist, wheel) names", "replace_dot_with_underscore"],
+    ["Replace non-[a-z] letters, non-[0-9] digits with underscore _", "replace_non_alnum_with_underscore"]
+  ])
+);
 
-function deriveNormalizationOps(rules) {
-  const ops = [];
+const NORMALIZATION_OP_PRECEDENCE = Object.freeze({
+  to_lowercase: 10,
+  apply_kebab_case: 20,
+  replace_dot_with_underscore: 30,
+  replace_underscore_with_dash: 40,
+  replace_non_alnum_with_underscore: 50
+});
+
+export function deriveNormalizationOps(rules, contextLabel) {
+  const discoveredOps = [];
   for (const rule of rules) {
-    for (const [needle, op] of NORMALIZATION_TEXT_TO_OP) {
-      if (String(rule).includes(needle) && !ops.includes(op)) {
-        ops.push(op);
+    const text = String(rule);
+    const op = NORMALIZATION_TEXT_TO_OP.get(text);
+    if (op) {
+      if (!discoveredOps.includes(op)) {
+        discoveredOps.push(op);
       }
+      continue;
     }
+
+    if (text.includes("vercmp(8)")) {
+      if (contextLabel === "alpm.version") {
+        // Explicit no-op for now: we keep alpm support without applying vercmp normalization.
+        continue;
+      }
+      throw new Error(
+        `Normalization rule for ${contextLabel} requires a full vercmp normalizer implementation: ${text}`
+      );
+    }
+
+    throw new Error(`Unknown normalization rule text for ${contextLabel}: ${text}`);
   }
-  return ops;
+
+  // Sort by explicit precedence so generated ops stay deterministic and idempotent.
+  return [...discoveredOps].sort((a, b) => {
+    const ap = NORMALIZATION_OP_PRECEDENCE[a] ?? Number.MAX_SAFE_INTEGER;
+    const bp = NORMALIZATION_OP_PRECEDENCE[b] ?? Number.MAX_SAFE_INTEGER;
+    if (ap !== bp) {
+      return ap - bp;
+    }
+    return a.localeCompare(b);
+  });
 }
 
-function toRule(definition) {
+function toRule(definition, contextLabel) {
   const normalizationRules = Array.isArray(definition?.normalization_rules) ? definition.normalization_rules : [];
 
   if (!definition) {
@@ -46,7 +83,7 @@ function toRule(definition) {
     caseSensitive: definition.case_sensitive !== false,
     permittedCharacters: definition.permitted_characters ?? null,
     normalizationRules,
-    normalizationOps: deriveNormalizationOps(normalizationRules)
+    normalizationOps: deriveNormalizationOps(normalizationRules, contextLabel)
   };
 }
 
@@ -75,10 +112,10 @@ export function loadTypeRuleSource() {
     qualifiers.sort((a, b) => a.key.localeCompare(b.key));
 
     out[definition.type] = {
-      namespace: toRule(definition.namespace_definition),
-      name: toRule(definition.name_definition),
-      version: toRule(definition.version_definition),
-      subpath: toRule(definition.subpath_definition),
+      namespace: toRule(definition.namespace_definition, `${definition.type}.namespace`),
+      name: toRule(definition.name_definition, `${definition.type}.name`),
+      version: toRule(definition.version_definition, `${definition.type}.version`),
+      subpath: toRule(definition.subpath_definition, `${definition.type}.subpath`),
       qualifiers
     };
   }
@@ -102,5 +139,3 @@ if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   const outFile = generateTypeRulesFile();
   console.log(`Wrote ${path.relative(ROOT, outFile)}`);
 }
-
-
