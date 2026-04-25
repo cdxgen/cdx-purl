@@ -115,9 +115,39 @@ build({
   namespace: null,
   name: "openssl",
   version: "1.1.1w",
-  qualifiers: { checksum: "sha1:aaa,sha256:bbb" },
+  qualifiers: {
+    checksum:
+      "sha1:da39a3ee5e6b4b0d3255bfef95601890afd80709,sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  },
   subpath: null,
 });
+```
+
+### Checksum values are validated by algorithm
+
+Checksum entries must use `algorithm:digest` form. The library validates each entry against an internal algorithm map and rejects digests that are missing an algorithm, non-hex, or wrong length for the selected algorithm.
+
+```js
+import { parse } from "@cdxgen/cdx-purl";
+
+// success: valid lengths for each algorithm
+parse(
+  "pkg:generic/openssl@1.1.1w?checksum=" +
+    "sha1:da39a3ee5e6b4b0d3255bfef95601890afd80709," +
+    "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+);
+
+// throws E_CHECKSUM_MISSING_ALGORITHM
+parse("pkg:generic/openssl@1.1.1w?checksum=da39a3ee5e6b4b0d3255bfef95601890afd80709");
+
+// throws E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM (wrong length)
+parse("pkg:generic/openssl@1.1.1w?checksum=sha256:abc123");
+
+// throws E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM (non-hex)
+parse(
+  "pkg:generic/openssl@1.1.1w?checksum=" +
+    "sha1:zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+);
 ```
 
 ### Type-specific required and prohibited fields are enforced
@@ -149,7 +179,7 @@ The library generates typed classes/builders for every type definition at genera
 | Component requirements (`namespace`, `name`, `version`, `subpath`) | `specification/types/*-definition.json` (`*_definition.requirement`)                                      | Enforces required/prohibited/optional semantics per type                                           | `E_REQUIRED_COMPONENT`, `E_PROHIBITED_COMPONENT`, `E_MISSING_NAME`, `E_MISSING_VERSION`                                    |
 | Character constraints and normalization                            | `specification/types/*-definition.json` (`permitted_characters`, `normalization_rules`, `case_sensitive`) | Applies case and normalization rules before validation and canonical build                         | `E_PERMITTED_CHARACTERS`, `E_INVALID_CHARACTER`                                                                            |
 | Qualifier allow-list per type                                      | `specification/types/*-definition.json` (`qualifiers_definition`)                                         | Rejects unknown qualifier keys except global/spec-compat policy keys                               | `E_UNKNOWN_QUALIFIER`                                                                                                      |
-| Qualifier value cardinality                                        | strict policy                                                                                             | Multi-value qualifiers rejected unless explicitly allowed (`checksum`)                             | `E_MULTIVALUE_QUALIFIER`, `E_INVALID_QUALIFIER_VALUE`                                                                      |
+| Qualifier value cardinality                                        | strict policy                                                                                             | Multi-value qualifiers rejected unless explicitly allowed (`checksum`)                             | `E_MULTIVALUE_QUALIFIER`, `E_INVALID_QUALIFIER_VALUE`, `E_CHECKSUM_MISSING_ALGORITHM`, `E_CHECKSUM_INVALID_DIGEST_FOR_ALGORITHM` |
 | Required qualifiers                                                | `specification/types/*-definition.json` (`qualifiers_definition.requirement`)                             | Missing required qualifier is rejected in parse and build flows                                    | `E_REQUIRED_QUALIFIER`                                                                                                     |
 | Type-specific semantic rules                                       | type specs and implementation policy                                                                      | CPAN uppercase author namespace and no `::` in distribution name; Swift host/owner namespace shape | `E_CPAN_NAMESPACE`, `E_CPAN_NAME`, `E_SWIFT_NAMESPACE`                                                                     |
 | Typed class safety                                                 | generated type registry from definitions                                                                  | Type-locked parse for each typed class with mismatch detection                                     | `E_TYPE_MISMATCH`                                                                                                          |
