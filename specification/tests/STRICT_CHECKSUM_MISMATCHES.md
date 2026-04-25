@@ -60,7 +60,6 @@ Suggested diff (example replacement):
 ## How to Recompute
 
 ```bash
-cd /Users/prabhu/work/cdxgen/cdx-purl
 pnpm test:base
 ```
 
