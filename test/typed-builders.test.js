@@ -85,3 +85,67 @@ test("type convenience methods exist only on exact typed builders", () => {
   assert.equal(typeof docker.setImage, "function");
 });
 
+test("build rejects absolute subpaths in object input", () => {
+  assert.throws(
+    () =>
+      build({
+        type: "generic",
+        namespace: null,
+        name: "openssl",
+        version: "1.1.1w",
+        qualifiers: null,
+        subpath: "/docs/api"
+      }),
+    (error) => {
+      assert.equal(error.code, "E_INVALID_SUBPATH");
+      assert.match(error.message, /relative subpath/);
+      return true;
+    }
+  );
+});
+
+test("build rejects Windows absolute subpaths in object input", () => {
+  for (const subpath of ["C:/docs/api", "C:\\docs\\api", "\\\\server\\share\\docs"]) {
+    assert.throws(
+      () =>
+        build({
+          type: "generic",
+          namespace: null,
+          name: "openssl",
+          version: "1.1.1w",
+          qualifiers: null,
+          subpath
+        }),
+      (error) => {
+        assert.equal(error.code, "E_INVALID_SUBPATH");
+        assert.match(error.message, /relative subpath/);
+        return true;
+      }
+    );
+  }
+});
+
+test("builder setSubpath defers to strict build-time subpath validation", () => {
+  assert.throws(
+    () => new GenericPurlBuilder().setName("openssl").setSubpath("/docs/api").buildString(),
+    (error) => {
+      assert.equal(error.code, "E_INVALID_SUBPATH");
+      assert.match(error.message, /relative subpath/);
+      return true;
+    }
+  );
+});
+
+test("builder setSubpath rejects Windows absolute subpaths at build time", () => {
+  for (const subpath of ["C:/docs/api", "C:\\docs\\api", "\\\\server\\share\\docs"]) {
+    assert.throws(
+      () => new GenericPurlBuilder().setName("openssl").setSubpath(subpath).buildString(),
+      (error) => {
+        assert.equal(error.code, "E_INVALID_SUBPATH");
+        assert.match(error.message, /relative subpath/);
+        return true;
+      }
+    );
+  }
+});
+

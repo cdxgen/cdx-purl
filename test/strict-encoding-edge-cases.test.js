@@ -81,6 +81,11 @@ test("strict ABNF accepts escaped separators in qualifier values", () => {
   assert.equal(rebuilt, input);
 });
 
+test("parse keeps compatibility by canonicalizing absolute-looking raw subpaths", () => {
+  const parsed = parse("pkg:generic/acme/app#//docs///api/.././v1/");
+  assert.equal(parsed.subpath, "docs/api/v1");
+});
+
 test("phase 2 rejects qualifier keys not allowed by type policy", () => {
   assert.throws(() =>
     parse("pkg:maven/org.apache.commons/io@1.3.4?mykey=my%20value")
