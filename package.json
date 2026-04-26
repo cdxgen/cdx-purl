@@ -1,7 +1,20 @@
 {
   "name": "@cdxgen/cdx-purl",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Pure JavaScript package-url parser and builder",
+  "keywords": [
+    "sbom",
+    "package-url",
+    "purl"
+  ],
+  "homepage": "http://github.com/cdxgen/cdx-purl",
+  "bugs": {
+    "url": "https://github.com/cdxgen/cdx-purl/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cdxgen/cdx-purl.git"
+  },
   "main": "index.js",
   "exports": {
     ".": "./index.js"
@@ -25,7 +38,6 @@
     "test:runtime:bun": "bun run test/runtime-smoke.mjs",
     "test:runtime:deno": "deno run --allow-read test/runtime-smoke.mjs"
   },
-  "keywords": [],
   "author": "Team AppThreat <hello@appthreat.com>",
   "license": "MIT",
   "engines": {

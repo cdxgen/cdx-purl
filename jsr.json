@@ -1,0 +1,17 @@
+{
+  "name": "@cdxgen/cdx-purl",
+  "version": "0.0.3",
+  "license": "MIT",
+  "exports": "./index.js",
+  "include": [
+    "index.js",
+    "generated/type-rules.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "exclude": [
+    "scripts",
+    "specification",
+    "test"
+  ]
+}
