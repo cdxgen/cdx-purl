@@ -553,6 +553,18 @@ function normalizeSubpath(subpath) {
   if (typeof subpath !== "string") {
     throw createError("E_INVALID_SUBPATH", "Subpath must be a string");
   }
+  if (subpath.startsWith("/")) {
+    throw createError(
+      "E_INVALID_SUBPATH",
+      'Absolute subpaths are not allowed; use a relative subpath like "a/b" instead of "/a/b"'
+    );
+  }
+  if (subpath.startsWith("\\") || /^[A-Za-z]:[\\/]/.test(subpath)) {
+    throw createError(
+      "E_INVALID_SUBPATH",
+      'Absolute subpaths are not allowed; use a relative subpath like "a/b" instead of "/a/b"'
+    );
+  }
 
   const segments = subpath.split("/").filter(Boolean);
   const normalized = segments.filter((segment) => segment !== "." && segment !== "..");

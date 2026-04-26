@@ -168,6 +168,40 @@ build({
 });
 ```
 
+### Subpath validation in builder and object flows
+
+When you provide purl parts directly (`build`, `Purl.from`, typed builders), `subpath` must be relative.
+Absolute-style values are rejected with `E_INVALID_SUBPATH` and an actionable message.
+This includes leading `/` and Windows absolute forms like `C:\\docs\\api` or `\\\\server\\share\\docs`.
+
+```js
+import { build, parse } from "@cdxgen/cdx-purl";
+
+// throws E_INVALID_SUBPATH
+build({
+  type: "generic",
+  namespace: null,
+  name: "openssl",
+  version: "1.1.1w",
+  qualifiers: null,
+  subpath: "/docs/api",
+});
+
+// accepted: relative subpath
+build({
+  type: "generic",
+  namespace: null,
+  name: "openssl",
+  version: "1.1.1w",
+  qualifiers: null,
+  subpath: "docs/api",
+});
+
+// parser compatibility: raw purl subpaths are canonicalized
+// `//docs///api/` -> `docs/api`
+parse("pkg:generic/openssl@1.1.1w#//docs///api/"); // => { type: "generic", namespace: null, name: "openssl", version: "1.1.1w", qualifiers: null, subpath: "docs/api" }
+```
+
 ## Supported purl types
 
 The library generates typed classes/builders for every type definition at generation time from `specification/types/*-definition.json`:

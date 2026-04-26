@@ -1,6 +1,6 @@
 {
   "name": "@cdxgen/cdx-purl",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Pure JavaScript package-url parser and builder",
   "main": "index.js",
   "exports": {
