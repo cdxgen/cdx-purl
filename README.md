@@ -168,6 +168,21 @@ build({
 });
 ```
 
+### Go vanity module paths are accepted without a namespace
+
+The purl `golang` definition predates Go modules and marks the namespace as required.
+Single-segment vanity module paths such as `go.opencensus.io` are valid Go modules with no
+namespace, so they are accepted when the name is host-like (dot-separated labels).
+Bare names that are not host-like still require a namespace.
+
+```js
+import { parse } from "@cdxgen/cdx-purl";
+
+parse("pkg:golang/go.opencensus.io@v0.24.0"); // ok, namespace is null
+parse("pkg:golang/k8s.io"); // ok
+parse("pkg:golang/context"); // throws E_REQUIRED_COMPONENT
+```
+
 ### Subpath validation in builder and object flows
 
 When you provide purl parts directly (`build`, `Purl.from`, typed builders), `subpath` must be relative.
