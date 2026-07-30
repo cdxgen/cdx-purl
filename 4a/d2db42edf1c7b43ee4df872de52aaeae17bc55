@@ -1,0 +1,30 @@
+test/golang-vanity-modules.test.js
+  s_e7235f4b434347::t_ed62c5993b5e07 1-68
+README.md
+  s_e7235f4b434347::t_628bb3ec19d0ff 171-185
+jsr.json
+  s_e7235f4b434347::t_e2fc02990613eb 3
+package.json
+  s_e7235f4b434347::t_e2fc02990613eb 3
+index.js
+  s_e7235f4b434347::t_d8a958c6238de4 519
+  s_e7235f4b434347::t_b9fbe98eaa3e8e 8-9
+  s_e7235f4b434347::t_f709f9735c4ea8 482-484
+  s_e7235f4b434347::t_60bf28f952491c 418-430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4ad2db42edf1c7b43ee4df872de52aaeae17bc55",
+  "prompts": {},
+  "sessions": {
+    "s_e7235f4b434347": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9d86616-3fa5-43db-9ee0-1e260aaa1b6f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
