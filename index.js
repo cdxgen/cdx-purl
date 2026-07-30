@@ -5,6 +5,8 @@ const TYPE_RE = /^[A-Za-z][A-Za-z0-9.-]*$/;
 const QUALIFIER_KEY_RE = /^[A-Za-z][A-Za-z0-9._-]*$/;
 const CANONICAL_TYPE_RE = /^[a-z][a-z0-9.-]*$/;
 const CANONICAL_QUALIFIER_KEY_RE = /^[a-z][a-z0-9._-]*$/;
+// Host-like single-segment Go module paths, e.g. go.opencensus.io, gopkg.in.
+const GOLANG_VANITY_MODULE_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/;
 
 const LITERAL_SET = new Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:");
 
@@ -413,6 +415,19 @@ function applySwiftRules(parts) {
   }
 }
 
+function applyGolangRules(parts) {
+  if (parts.type !== "golang" || parts.namespace) {
+    return;
+  }
+
+  // The purl golang definition predates Go modules and requires a namespace.
+  // Single-segment vanity module paths such as go.opencensus.io are valid Go
+  // modules with no namespace, so accept them when the name is host-like.
+  if (!GOLANG_VANITY_MODULE_RE.test(parts.name)) {
+    throw createError("E_REQUIRED_COMPONENT", "namespace is required by type rules");
+  }
+}
+
 function isQualifierAllowed(type, key, qualifierRules) {
   if (qualifierRules.has(key)) {
     return true;
@@ -464,7 +479,9 @@ function applyTypeRules(parts, input) {
     subpath: normalizeByRule(parts.subpath, rules.subpath)
   };
 
-  validateRequirement("namespace", rules.namespace.requirement, out.namespace);
+  if (out.type !== "golang") {
+    validateRequirement("namespace", rules.namespace.requirement, out.namespace);
+  }
   validateRequirement("name", rules.name.requirement, out.name);
   validateRequirement("version", rules.version.requirement, out.version);
   validateRequirement("subpath", rules.subpath.requirement, out.subpath);
@@ -499,6 +516,7 @@ function applyTypeRules(parts, input) {
 
   applyCpanRules(out);
   applySwiftRules(out);
+  applyGolangRules(out);
   return out;
 }
 
