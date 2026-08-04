@@ -11,7 +11,17 @@ const GOLANG_VANITY_MODULE_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0
 const LITERAL_SET = new Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~:");
 
 // Strict qualifier policy: keys must be known by type or global spec qualifiers.
-const GLOBAL_QUALIFIER_KEYS = new Set(["repository_url", "download_url", "vcs_url", "checksum"]);
+// The global set is the commonly-used keys the specification documents for every
+// type. `vers` is documented alongside these but is not admitted here, because it
+// is mutually exclusive with the version component and that rule is not yet
+// enforced.
+const GLOBAL_QUALIFIER_KEYS = new Set([
+  "repository_url",
+  "download_url",
+  "vcs_url",
+  "checksum",
+  "file_name"
+]);
 const MULTI_VALUE_QUALIFIER_KEYS = new Set(["checksum"]);
 const CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM = Object.freeze({
   md5: 32,
@@ -33,10 +43,35 @@ const CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM = Object.freeze({
 });
 const HEX_DIGEST_RE = /^[0-9A-Fa-f]+$/;
 // Compatibility exceptions kept outside type definitions; merged into QUALIFIER_POLICY_BY_TYPE.
+//
+// The OS package types carry two release qualifiers that producers of container
+// SBOMs emit and consumers of them read, and that no type definition enumerates:
+//
+//   distro       the distro id and release, such as debian-12 or alpine-3.19.
+//                The apk type definition refers to this key when describing how
+//                a repository is implied, without listing it as a qualifier.
+//   distro_name  the release codename, such as bookworm or jammy. Vulnerability
+//                feeds for deb and apk fold the codename into the package path
+//                (pkg:deb/debian/bookworm/curl), so a locator that omits it
+//                cannot be matched against a release-specific advisory.
+//
+// Both keys satisfy the qualifier key rules in the specification, and a type
+// definition's qualifiers_definition enumerates the keys known to a type rather
+// than closing the set, so admitting them is a decision about how strict this
+// library chooses to be and not a departure from the grammar.
+//
+// `epoch` is deliberately not admitted here. Only rpm defines it, because an RPM
+// carries epoch, version and release as separate header fields. A dpkg or pacman
+// version is one string with the epoch inside it, which is what the deb type
+// definition's own examples show (pkg:deb/debian/attr@1:2.4.47-2?arch=source).
+const OS_RELEASE_QUALIFIERS = ["distro", "distro_name"];
 const COMPAT_QUALIFIER_OVERRIDES_BY_TYPE = Object.freeze({
+  alpm: OS_RELEASE_QUALIFIERS,
+  apk: OS_RELEASE_QUALIFIERS,
   conan: ["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"],
-  deb: ["distro"],
-  rpm: ["distro"]
+  deb: OS_RELEASE_QUALIFIERS,
+  qpkg: OS_RELEASE_QUALIFIERS,
+  rpm: OS_RELEASE_QUALIFIERS
 });
 
 function createError(code, message, input) {

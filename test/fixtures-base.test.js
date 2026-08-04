@@ -3,12 +3,11 @@ import test from "node:test";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { build, parse, roundTrip } from "../index.js";
+import { build, getAllowedQualifierKeysForType, parse, roundTrip } from "../index.js";
 
 const ROOT = process.cwd();
 const FIXTURES_ROOT = path.join(ROOT, "specification", "tests");
 
-const GLOBAL_QUALIFIER_KEYS = new Set(["repository_url", "download_url", "vcs_url", "checksum"]);
 const MULTI_VALUE_QUALIFIER_KEYS = new Set(["checksum"]);
 const CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM = Object.freeze({
   md5: 32,
@@ -29,29 +28,6 @@ const CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM = Object.freeze({
   "blake2b-512": 128
 });
 const HEX_DIGEST_RE = /^[0-9A-Fa-f]+$/;
-const EXTRA_COMPAT_QUALIFIER_KEYS_BY_TYPE = Object.freeze({
-  conan: ["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"],
-  deb: ["distro"],
-  rpm: ["distro"]
-});
-
-let ALLOWED_QUALIFIERS_BY_TYPE = null;
-let EXTRA_QUALIFIER_KEYS_BY_TYPE = null;
-
-function buildExtraQualifierMap(allowedQualifierMap) {
-  const map = new Map();
-
-  for (const type of allowedQualifierMap.keys()) {
-    map.set(type, new Set());
-  }
-
-  for (const [type, keys] of Object.entries(EXTRA_COMPAT_QUALIFIER_KEYS_BY_TYPE)) {
-    map.set(type, new Set(keys));
-  }
-
-  return map;
-}
-
 function normalizeParts(parts) {
   return {
     type: parts.type,
@@ -191,12 +167,14 @@ function hasUnknownQualifierViolation(entry) {
     return false;
   }
 
-  const allowed = ALLOWED_QUALIFIERS_BY_TYPE.get(type) || new Set();
-  const extras = EXTRA_QUALIFIER_KEYS_BY_TYPE?.get(type) || new Set();
+  // Ask the library for its effective policy rather than reconstructing it here.
+  // A local copy of the allow-list silently stops describing the runtime the
+  // moment the runtime changes, and then classifies fixtures against a policy
+  // that no longer exists.
+  const allowed = getAllowedQualifierKeysForType(type) || new Set();
 
   for (const key of Object.keys(qualifiers)) {
-    const normalized = key.toLowerCase();
-    if (allowed.has(normalized) || GLOBAL_QUALIFIER_KEYS.has(normalized) || extras.has(normalized)) {
+    if (allowed.has(key.toLowerCase())) {
       continue;
     }
     return true;
@@ -315,28 +293,7 @@ async function loadBaseTests() {
   return all;
 }
 
-async function loadAllowedQualifierMap() {
-  const map = new Map();
-  const typesDir = path.join(ROOT, "specification", "types");
-  const files = await readdir(typesDir, { withFileTypes: true });
 
-  for (const entry of files) {
-    if (!entry.isFile() || !entry.name.endsWith("-definition.json")) {
-      continue;
-    }
-
-    const filePath = path.join(typesDir, entry.name);
-    const raw = await readFile(filePath, "utf8");
-    const definition = JSON.parse(raw);
-    const keys = new Set((definition.qualifiers_definition || []).map((q) => String(q.key || "").toLowerCase()));
-    map.set(definition.type, keys);
-  }
-
-  return map;
-}
-
-ALLOWED_QUALIFIERS_BY_TYPE = await loadAllowedQualifierMap();
-EXTRA_QUALIFIER_KEYS_BY_TYPE = buildExtraQualifierMap(ALLOWED_QUALIFIERS_BY_TYPE);
 const baseTests = await loadBaseTests();
 
 for (const { filePath, entry } of baseTests) {
