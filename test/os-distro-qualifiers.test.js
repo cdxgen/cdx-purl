@@ -50,31 +50,41 @@ test("OS types accept distro and distro_name together, alongside arch", () => {
   assert.equal(parsed.qualifiers.distro_name, "bookworm");
 });
 
-test("a deb epoch belongs in the version, not in a qualifier", () => {
-  // The deb type definition carries this exact example. dpkg presents one
-  // version string with the epoch inside it, unlike rpm, whose epoch is a
-  // separate header field and a defined qualifier.
-  const built = build({
+test("a deb epoch round-trips both in the version and as a qualifier", () => {
+  // The deb type definition carries this example, with the epoch inside the
+  // version: dpkg presents one version string. rpm is the other way round, its
+  // version being the version-release pair with the epoch in a qualifier.
+  const specExample = build({
     type: "deb",
     namespace: "debian",
     name: "attr",
     version: "1:2.4.47-2",
     qualifiers: { arch: "source" }
   });
-  assert.equal(built, "pkg:deb/debian/attr@1:2.4.47-2?arch=source");
-  assert.equal(parse(built).version, "1:2.4.47-2");
+  assert.equal(specExample, "pkg:deb/debian/attr@1:2.4.47-2?arch=source");
+  assert.equal(parse(specExample).version, "1:2.4.47-2");
 
-  for (const type of ["deb", "alpm"]) {
-    assert.throws(
-      () => build({ type, ...BASELINE[type], qualifiers: { epoch: "1" } }),
-      (error) => error?.code === "E_UNKNOWN_QUALIFIER",
-      `${type} must not accept an epoch qualifier`
-    );
+  // Producers repeat the epoch as a qualifier. The repetition adds nothing, but
+  // rejecting it would change the identity of every epoched package.
+  for (const type of ["deb", "alpm", "rpm"]) {
+    const built = build({
+      type,
+      ...BASELINE[type],
+      qualifiers: { epoch: "1" }
+    });
+    assert.equal(parse(built).qualifiers.epoch, "1", `${type} must round-trip an epoch qualifier`);
   }
   assert.equal(
-    parse(build({ type: "rpm", ...BASELINE.rpm, qualifiers: { epoch: "1" } })).qualifiers.epoch,
-    "1",
-    "rpm defines an epoch qualifier and must keep accepting it"
+    parse(
+      build({
+        type: "deb",
+        namespace: "debian",
+        name: "bsdutils",
+        version: "1:2.38.1-5+deb12u3",
+        qualifiers: { arch: "arm64", distro: "debian-12", distro_name: "bookworm", epoch: "1" }
+      })
+    ).version,
+    "1:2.38.1-5+deb12u3"
   );
 });
 

@@ -60,16 +60,21 @@ const HEX_DIGEST_RE = /^[0-9A-Fa-f]+$/;
 // than closing the set, so admitting them is a decision about how strict this
 // library chooses to be and not a departure from the grammar.
 //
-// `epoch` is deliberately not admitted here. Only rpm defines it, because an RPM
-// carries epoch, version and release as separate header fields. A dpkg or pacman
-// version is one string with the epoch inside it, which is what the deb type
-// definition's own examples show (pkg:deb/debian/attr@1:2.4.47-2?arch=source).
+// `epoch` is admitted for `deb` and `alpm` as well, though only the rpm type
+// defines it. An RPM carries epoch, version and release as three header fields,
+// so an rpm version excludes the epoch and the qualifier is the only place it
+// can go. A dpkg or pacman version is one string that already contains the
+// epoch, as the deb type definition's own example shows
+// (pkg:deb/debian/attr@1:2.4.47-2?arch=source), so the qualifier merely repeats
+// it. Producers emit both, and rejecting the repetition would change the
+// identity of every epoched package rather than add any information, so it is
+// accepted here.
 const OS_RELEASE_QUALIFIERS = ["distro", "distro_name"];
 const COMPAT_QUALIFIER_OVERRIDES_BY_TYPE = Object.freeze({
-  alpm: OS_RELEASE_QUALIFIERS,
+  alpm: [...OS_RELEASE_QUALIFIERS, "epoch"],
   apk: OS_RELEASE_QUALIFIERS,
   conan: ["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"],
-  deb: OS_RELEASE_QUALIFIERS,
+  deb: [...OS_RELEASE_QUALIFIERS, "epoch"],
   qpkg: OS_RELEASE_QUALIFIERS,
   rpm: OS_RELEASE_QUALIFIERS
 });
