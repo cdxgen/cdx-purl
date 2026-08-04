@@ -4,11 +4,25 @@ import test from "node:test";
 import { build, getAllowedQualifierKeysForType, parse } from "../index.js";
 import { deriveSeedParts, ensureBuildable, loadTypeDefinitions, qualifierDefaultValue } from "./support/type-test-utils.js";
 
-const COMPAT_QUALIFIER_OVERRIDES_BY_TYPE = Object.freeze({
-  conan: ["arch", "build_type", "compiler", "compiler.runtime", "compiler.version", "os", "shared"],
-  deb: ["distro"],
-  rpm: ["distro"]
-});
+const GLOBAL_QUALIFIER_KEYS = new Set(["repository_url", "download_url", "vcs_url", "checksum", "file_name"]);
+
+// Derived from the library rather than restated here. A restated copy of the
+// policy stops describing the runtime as soon as the runtime changes, and then
+// asserts against a policy that no longer exists.
+const COMPAT_QUALIFIER_OVERRIDES_BY_TYPE = Object.freeze(
+  Object.fromEntries(
+    loadTypeDefinitions().map((definition) => {
+      const definitionKeys = new Set(
+        (definition.qualifiers_definition || []).map((entry) => String(entry.key || "").toLowerCase())
+      );
+      const effective = getAllowedQualifierKeysForType(definition.type) || new Set();
+      const extras = [...effective].filter(
+        (key) => !definitionKeys.has(key) && !GLOBAL_QUALIFIER_KEYS.has(key)
+      );
+      return [definition.type, extras.sort()];
+    }).filter(([, extras]) => extras.length)
+  )
+);
 
 const TYPE_DEFINITIONS = loadTypeDefinitions();
 const DEFINITION_QUALIFIER_KEYS_BY_TYPE = new Map(
@@ -22,7 +36,6 @@ const BUILDABLE_BASELINES = new Map(
   TYPE_DEFINITIONS.map((definition) => [definition.type, ensureBuildable(deriveSeedParts(definition))])
 );
 
-const GLOBAL_QUALIFIER_KEYS = new Set(["repository_url", "download_url", "vcs_url", "checksum"]);
 
 function withQualifier(parts, key, value) {
   return {

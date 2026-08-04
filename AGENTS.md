@@ -75,7 +75,10 @@ node scripts/dump-qualifier-policy.mjs
 
 - `index.js` contains `COMPAT_QUALIFIER_OVERRIDES_BY_TYPE` for strict-policy compatibility exceptions that are merged into `QUALIFIER_POLICY_BY_TYPE`.
 - These are not a replacement for `specification/types/*-definition.json`; they are a narrow shim for known ecosystem cases.
-- Current overrides are intentionally limited to `conan`, `deb`, and `rpm`.
+- Current overrides are `conan` and the OS distribution types `alpm`, `apk`, `deb`,
+  `qpkg` and `rpm`, which share the `distro` and `distro_name` release qualifiers.
+  `deb` and `alpm` also accept `epoch`, which producers emit alongside the epoch
+  already present in the version string.
 - If this map changes, also update qualifier-policy tests and re-run `node scripts/dump-qualifier-policy.mjs`.
 
 ## Coding rules
