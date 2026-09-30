@@ -15,13 +15,7 @@ const LITERAL_SET = new Set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy
 // type. `vers` is documented alongside these but is not admitted here, because it
 // is mutually exclusive with the version component and that rule is not yet
 // enforced.
-const GLOBAL_QUALIFIER_KEYS = new Set([
-  "repository_url",
-  "download_url",
-  "vcs_url",
-  "checksum",
-  "file_name"
-]);
+const GLOBAL_QUALIFIER_KEYS = new Set(["repository_url", "download_url", "vcs_url", "checksum", "file_name"]);
 const MULTI_VALUE_QUALIFIER_KEYS = new Set(["checksum"]);
 const CHECKSUM_DIGEST_LENGTH_BY_ALGORITHM = Object.freeze({
   md5: 32,
@@ -524,11 +518,7 @@ function validateChecksumQualifierValue(value, input) {
     const token = entry.trim();
     const colon = token.indexOf(":");
     if (colon <= 0) {
-      throw createError(
-        "E_CHECKSUM_MISSING_ALGORITHM",
-        "Checksum entries must use algorithm:digest format",
-        input
-      );
+      throw createError("E_CHECKSUM_MISSING_ALGORITHM", "Checksum entries must use algorithm:digest format", input);
     }
 
     const algorithm = token.slice(0, colon).toLowerCase();
@@ -1257,4 +1247,3 @@ export const SwidPurl = TypedPurls.swid;
 export const SwiftPurl = TypedPurls.swift;
 export const VscodeExtensionPurl = TypedPurls["vscode-extension"];
 export const YoctoPurl = TypedPurls.yocto;
-
