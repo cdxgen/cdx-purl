@@ -15,6 +15,16 @@ This file tracks fixture cases where `base` tests currently accept inputs that v
 3. Qualifier keys not explicitly allowed by type/global spec policy
 4. Multi-value qualifier values where the key is not explicitly multi-value
 
+## Advanced Cases With A Literal `+`
+
+`test/fixtures-base.test.js` runs only the `base` group. The `advanced` group
+also carries parse and roundtrip inputs that leave a `+` unescaped in a name
+or subpath (`swid-test.json`: `Enterprise+Server`, `Adobe+Systems+Incorporated`;
+`cocoapods-test.json`: `#NSData+zlib`). They are rejected with
+`E_INVALID_CHARACTER` for the same reason as category 2 below.
+`test/reserved-character-errors.test.js` asserts that rejection and that each
+input with `+` written as `%2B` yields the upstream expected output.
+
 ## Current Base Fixture Cases (35)
 
 The entries below are grouped by unique mismatch pattern. Each case points to a snippet id (`Mxx`) with a concrete ABNF-safe replacement.

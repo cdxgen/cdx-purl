@@ -79,6 +79,39 @@ All named typed exports (for example `NpmPurlBuilder`, `RpmPurl`, `VscodeExtensi
 
 ## Validation behavior (strict by design)
 
+### Reserved characters must be percent-encoded
+
+Outside the separators, only letters, digits, `.`, `-`, `_`, `~` and `:` may
+appear literally in a purl component (`specification/purl-proposed-grammar.abnf`).
+`parse` rejects anything else instead of guessing what was meant, including
+the `+` of semver build metadata and of Debian or Go versions. Pass raw values
+to `build` (or a builder) and it escapes them; `parse` decodes them again.
+
+```js
+import { build, parse } from "@cdxgen/cdx-purl";
+
+build({ type: "npm", name: "app", version: "1.0.0+build.5" });
+// "pkg:npm/app@1.0.0%2Bbuild.5"
+parse("pkg:npm/app@1.0.0%2Bbuild.5").version; // "1.0.0+build.5"
+
+parse("pkg:npm/app@1.0.0+build.5");
+// throws E_INVALID_CHARACTER:
+// Invalid character "+" in version at index 5; percent-encode it as %2B
+```
+
+`E_INVALID_CHARACTER` and `E_DISALLOWED_PERCENT_ENCODING` errors carry the
+offending `component` (`name`, `version`, `namespace`, `subpath` or
+`qualifier <key>`), the `index` within that component's raw text, the
+`character` (or escape) found there, and for `E_INVALID_CHARACTER` the
+`encoded` form to write instead. An escape of a character that must be written
+literally (`%41` for `A`) and an escaped separator (`%2F` in a namespace or
+subpath) are rejected with `E_DISALLOWED_PERCENT_ENCODING`.
+
+The upstream test suite has a few parse and roundtrip cases whose input leaves
+a `+` unescaped (`NSData+zlib`, `Enterprise+Server`). cdx-purl rejects those
+inputs; their escaped forms produce exactly the upstream expectations
+(`test/reserved-character-errors.test.js`).
+
 ### Unknown qualifier keys are rejected
 
 ```js
