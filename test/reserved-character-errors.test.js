@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { build, parse, roundTrip } from "../index.js";
 
@@ -19,7 +20,7 @@ function specTests() {
       }
     }
   };
-  walk(new URL("../specification/tests", import.meta.url).pathname);
+  walk(fileURLToPath(new URL("../specification/tests", import.meta.url)));
   return out;
 }
 
