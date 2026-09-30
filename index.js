@@ -115,6 +115,27 @@ function isSubpathPermEscapedByte(byte) {
   return byte <= 0x1f || (byte >= 0x20 && byte <= 0x2c) || (byte >= 0x30 && byte <= 0xff);
 }
 
+function percentEncodeCharacter(character) {
+  let out = "";
+  for (const byte of new TextEncoder().encode(character)) {
+    out += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`;
+  }
+  return out;
+}
+
+// Attach where in which component the offending text sits, so a caller can
+// report or repair the exact character instead of guessing from the message.
+function createCharacterError(code, message, input, details) {
+  const error = createError(code, message, input);
+  error.component = details.component;
+  error.index = details.index;
+  error.character = details.character;
+  if (details.encoded) {
+    error.encoded = details.encoded;
+  }
+  return error;
+}
+
 function validateRawComponent(raw, allowEscapeByte, label, input) {
   if (!raw || typeof raw !== "string") {
     throw createError("E_EMPTY_COMPONENT", `${label} is required`, input);
@@ -126,16 +147,36 @@ function validateRawComponent(raw, allowEscapeByte, label, input) {
       if (!isHexPair(raw, i)) {
         throw createError("E_BAD_PERCENT_ENCODING", `Invalid percent encoding in ${label}`, input);
       }
+      const escape = raw.slice(i, i + 3).toUpperCase();
       const byte = Number.parseInt(raw.slice(i + 1, i + 3), 16);
       if (!allowEscapeByte(byte)) {
-        throw createError("E_DISALLOWED_PERCENT_ENCODING", `Disallowed escaped byte in ${label}`, input);
+        const literal = String.fromCharCode(byte);
+        const advice = LITERAL_SET.has(literal)
+          ? `write ${JSON.stringify(literal)} literally`
+          : `${escape} is a separator that must not appear escaped in ${label}`;
+        throw createCharacterError(
+          "E_DISALLOWED_PERCENT_ENCODING",
+          `Disallowed escaped byte ${escape} in ${label} at index ${i}; ${advice}`,
+          input,
+          { component: label, index: i, character: escape }
+        );
       }
       i += 2;
       continue;
     }
 
     if (!LITERAL_SET.has(ch)) {
-      throw createError("E_INVALID_CHARACTER", `Invalid character in ${label}`, input);
+      // A character outside the literal set must be percent-encoded; parse
+      // never repairs it, so name the escape the caller has to write instead.
+      const codePoint = raw.codePointAt(i);
+      const character = String.fromCodePoint(codePoint);
+      const encoded = percentEncodeCharacter(character);
+      throw createCharacterError(
+        "E_INVALID_CHARACTER",
+        `Invalid character ${JSON.stringify(character)} in ${label} at index ${i}; percent-encode it as ${encoded}`,
+        input,
+        { component: label, index: i, character, encoded }
+      );
     }
   }
 }
