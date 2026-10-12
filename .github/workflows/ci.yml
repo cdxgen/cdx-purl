@@ -1,5 +1,8 @@
 name: CI
 
+# merge_group lets the merge queue re-run the required checks (bun, deno and
+# the ubuntu OS-matrix leg) on the speculative merge commit; the other jobs
+# skip those builds via their if:.
 on:
   push:
     branches:
@@ -7,10 +10,12 @@ on:
     tags:
       - "v*"
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 jobs:
   test:
+    if: github.event_name != 'merge_group'
     name: Test (Node ${{ matrix.node-version }}, seed ${{ matrix.fuzz-seed }})
     runs-on: ubuntu-latest
     strategy:
@@ -69,6 +74,7 @@ jobs:
         run: pnpm test:fuzz:ci
 
   bun:
+    if: github.event_name != 'merge_group'
     name: Bun Runtime Smoke
     runs-on: ubuntu-latest
 
@@ -83,6 +89,7 @@ jobs:
         run: bun run test/runtime-smoke.mjs
 
   deno:
+    if: github.event_name != 'merge_group'
     name: Deno Runtime Smoke
     runs-on: ubuntu-latest
 
@@ -99,6 +106,7 @@ jobs:
         run: deno run --allow-read test/runtime-smoke.mjs
 
   test-os-matrix:
+    if: github.event_name != 'merge_group'
     name: Test OS Matrix (${{ matrix.os }}, Node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}
     strategy:
