@@ -36,4 +36,4 @@ git-ai log                            # git log with AI stats for each commit
 git-ai show <commit>                  # the raw note for a commit
 ```
 
-Most commits on the default branch have no note, because notes were not carried over when pull requests were squash-merged. For those, `git-ai blame` shows the git author and `git-ai stats` reports the lines as untracked. A missing note means no attribution was recorded, not that a person wrote the code. As stated above, all of the code in this repository was written by AI.
+Most commits on the default branch have no note. For those, `git-ai blame` shows the git author and `git-ai stats` reports the lines as untracked. A missing note means no attribution was recorded, not that a person wrote the code. As stated above, all of the code in this repository was written by AI.
