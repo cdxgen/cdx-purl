@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_9ef41a999f4dfc::t_fdb7c4b4a0290e 18-19,25-26,47-48,87-88,93-94,98-99,107-108,113-114,127-128,143-144,179-180,218-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce1757d2dced368fe48f12cf672a2643c9c5718a",
+  "prompts": {},
+  "sessions": {
+    "s_9ef41a999f4dfc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "664079b5-fb65-49df-a81f-2b91f06cbafa",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
