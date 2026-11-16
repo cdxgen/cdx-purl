@@ -337,3 +337,5 @@ Coverage includes:
 ## License
 
 MIT License. See [LICENSE](./LICENSE) for details.
+
+This line exists only to exercise the Actions event policy for project-sync. It is not part of any change under review.
