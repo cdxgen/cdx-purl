@@ -1,0 +1,19 @@
+README.md
+  s_eada3e4226639d::t_a6781c42f9dfbd 340-341
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d06b3a490659ab724f470d778afc3c0c03b60657",
+  "prompts": {},
+  "sessions": {
+    "s_eada3e4226639d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_b7b72455-6757-4ce5-80c6-486816f659d0",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
