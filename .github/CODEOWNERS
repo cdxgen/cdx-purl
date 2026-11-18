@@ -1,0 +1,3 @@
+# The lockfile decides which commits the onboarded workflows run from, so
+# changes to it need the same review as changes to the workflows themselves.
+.github/workflows/actions.lock @prabhu
