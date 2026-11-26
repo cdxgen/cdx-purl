@@ -1,0 +1,19 @@
+test/slash-run-performance.test.js
+  s_75f9ecb21f7b08::t_8748f3841ca1a9 6-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "acabebee9413e24081295d00b972857827d3ec82",
+  "prompts": {},
+  "sessions": {
+    "s_75f9ecb21f7b08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5ed76c5-531f-49fc-bb3e-4f546571d60a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
