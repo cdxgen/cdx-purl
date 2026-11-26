@@ -239,12 +239,30 @@ function parseQualifiers(rawQualifiers, input) {
   return Object.keys(out).length ? out : null;
 }
 
+// Linear scans instead of /^\/+/ and /\/+$/: the trailing-slash regex
+// backtracks quadratically on long slash runs that are not at the end.
+function stripLeadingSlashes(value) {
+  let start = 0;
+  while (start < value.length && value.charCodeAt(start) === 0x2f) {
+    start += 1;
+  }
+  return start === 0 ? value : value.slice(start);
+}
+
+function stripTrailingSlashes(value) {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 0x2f) {
+    end -= 1;
+  }
+  return end === value.length ? value : value.slice(0, end);
+}
+
 function parseSubpath(rawSubpath, input) {
   if (rawSubpath == null) {
     return null;
   }
 
-  const stripped = rawSubpath.replace(/^\/+|\/+$/g, "");
+  const stripped = stripTrailingSlashes(stripLeadingSlashes(rawSubpath));
   if (!stripped) {
     return null;
   }
@@ -265,12 +283,12 @@ function parseSubpath(rawSubpath, input) {
 }
 
 function parsePath(rawPath, input) {
-  const withoutLeading = rawPath.replace(/^\/+/, "");
+  const withoutLeading = stripLeadingSlashes(rawPath);
   if (!withoutLeading) {
     throw createError("E_MISSING_TYPE", "PURL type is required", input);
   }
 
-  const withoutTrailing = withoutLeading.replace(/\/+$/, "");
+  const withoutTrailing = stripTrailingSlashes(withoutLeading);
   const slash = withoutTrailing.indexOf("/");
   if (slash <= 0) {
     throw createError("E_MISSING_NAME", "PURL name is required", input);
