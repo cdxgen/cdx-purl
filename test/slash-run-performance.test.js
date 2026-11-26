@@ -3,8 +3,9 @@ import test from "node:test";
 
 import { parse } from "../index.js";
 
-// Long runs of "/" followed by a non-slash character used to trigger
-// quadratic backtracking in the trailing-slash regexes.
+// A long run of "/" followed by another character makes a trailing-slash
+// regex such as /\/+$/ backtrack quadratically, so these inputs keep the
+// slash trimming linear.
 const SLASH_RUN = "/".repeat(200_000);
 const TIME_BUDGET_MS = 1000;
 
