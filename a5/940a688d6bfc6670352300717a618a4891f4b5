@@ -1,0 +1,21 @@
+index.js
+  s_75f9ecb21f7b08::t_4d0bb3d0954eba 242-259,265,286,291
+test/slash-run-performance.test.js
+  s_75f9ecb21f7b08::t_591319872b746c 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5940a688d6bfc6670352300717a618a4891f4b5",
+  "prompts": {},
+  "sessions": {
+    "s_75f9ecb21f7b08": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5ed76c5-531f-49fc-bb3e-4f546571d60a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
